@@ -19,7 +19,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark"> {/* Force dark mode */}
+    <html lang="en" className="dark">
+      {/* Force dark mode */}
       <body className={`${inter.variable} font-sans antialiased flex flex-col min-h-screen`}>
         {children}
         <Toaster />
