@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { PerformanceMetrics, ProfitLossDataPoint } from '@/types';
@@ -39,25 +40,52 @@ const CandleShape = (props: any) => {
   // width: width of the bar
   // height: height of the bar (corresponds to scaled `high - low` distance)
   
+  // Guard against NaN props from Recharts or invalid payload data
+  if (typeof x !== 'number' || isNaN(x) || 
+      typeof y !== 'number' || isNaN(y) ||
+      typeof width !== 'number' || isNaN(width) || width <= 0 ||
+      typeof height !== 'number' || isNaN(height) || height < 0 ||
+      !payload) {
+    // console.warn("CandleShape: Received invalid geometry props or no payload", { x, y, width, height, payload });
+    return null; 
+  }
+
   const { open, close, high, low } = payload;
 
+  if (typeof open !== 'number' || isNaN(open) ||
+      typeof close !== 'number' || isNaN(close) ||
+      typeof high !== 'number' || isNaN(high) ||
+      typeof low !== 'number' || isNaN(low)) {
+    // console.warn("CandleShape: Received NaN in payload data", payload);
+    return null;
+  }
+  
   const isPositive = close >= open;
   const candleFill = isPositive ? 'hsl(var(--chart-positive))' : 'hsl(var(--chart-negative))';
   
   // Function to scale data value to pixel y-coordinate relative to the bar's y and height
   // The bar's y is for `high` (top of the bounding box), bar's y + height is for `low` (bottom of the bounding box).
   const valToPixel = (val: number) => {
-    const range = payload.high - payload.low;
+    const range = payload.high - payload.low; // Data range
     if (range === 0) { 
-      return y + height / 2; // Middle of the bar if high === low
+      // If data high and low are the same, all points (o,h,l,c) must be at the same level.
+      // props.y is the screen coordinate of payload.high.
+      // props.height (pixel height) would be 0.
+      return y; 
     }
-    // Proportion of the way down from `payload.high`
+    // proportion * props.height is the pixel offset from props.y
     const proportion = (payload.high - val) / range;
-    return y + proportion * height;
+    return y + proportion * props.height; // props.height is pixel height of high-low range
   };
 
   const yOpen = valToPixel(open);
   const yClose = valToPixel(close);
+
+  // This check might be redundant if the earlier payload check is comprehensive, but good for safety.
+  if (isNaN(yOpen) || isNaN(yClose)) {
+    // console.warn("CandleShape: yOpen or yClose became NaN after valToPixel", { yOpen, yClose, payload });
+    return null;
+  }
 
   const bodyTopY = Math.min(yOpen, yClose);
   const bodyHeight = Math.max(1, Math.abs(yOpen - yClose)); // Ensure body has min height 1px
@@ -77,13 +105,19 @@ const CandleShape = (props: any) => {
 const CustomTooltipContent = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload as ProfitLossDataPoint; // Full OHLC data
+    // Check if data and its properties are valid numbers before calling toFixed
+    const open = typeof data.open === 'number' ? data.open.toFixed(2) : 'N/A';
+    const high = typeof data.high === 'number' ? data.high.toFixed(2) : 'N/A';
+    const low = typeof data.low === 'number' ? data.low.toFixed(2) : 'N/A';
+    const close = typeof data.close === 'number' ? data.close.toFixed(2) : 'N/A';
+
     return (
       <div className="p-2 bg-popover border border-border rounded-md shadow-lg text-popover-foreground text-xs">
         <p className="label font-semibold mb-1">{`${data.name}`}</p>
-        <p>{`Open: $${data.open.toFixed(2)}`}</p>
-        <p>{`High: $${data.high.toFixed(2)}`}</p>
-        <p>{`Low: $${data.low.toFixed(2)}`}</p>
-        <p>{`Close: $${data.close.toFixed(2)}`}</p>
+        <p>{`Open: $${open}`}</p>
+        <p>{`High: $${high}`}</p>
+        <p>{`Low: $${low}`}</p>
+        <p>{`Close: $${close}`}</p>
       </div>
     );
   }
@@ -151,7 +185,7 @@ export default function PerformanceDashboard({ metrics, history }: PerformanceDa
                   tickLine={false}
                   axisLine={false}
                   fontSize={12}
-                  tickFormatter={(value) => `$${value.toFixed(0)}`} // Format Y-axis ticks
+                  tickFormatter={(value) => typeof value === 'number' && !isNaN(value) ? `$${value.toFixed(0)}` : '$0'} // Format Y-axis ticks, handle NaN
                   domain={['auto', 'auto']} // Let Recharts determine domain based on OHLC values
                   allowDataOverflow={true}
                 />
@@ -175,3 +209,4 @@ export default function PerformanceDashboard({ metrics, history }: PerformanceDa
     </div>
   );
 }
+
