@@ -8,7 +8,7 @@ import AiOptimizer from '@/components/ai-optimizer/AiOptimizer';
 import RiskManagement from '@/components/risk-management/RiskManagement';
 import SystemAlertsDisplay from '@/components/system-alerts/SystemAlertsDisplay';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CandlestickChart, LayoutDashboard, Bot, ShieldCheck, Bell } from 'lucide-react';
+import { CandlestickChart as CandlestickIcon, LayoutDashboard, Bot, ShieldCheck, Bell } from 'lucide-react'; // Renamed to avoid conflict with chart component
 import type { StockData, PerformanceMetrics, ProfitLossDataPoint, SystemAlert } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -27,10 +27,16 @@ const initialPerformanceMetrics: PerformanceMetrics = {
   totalTrades: 152,
 };
 
+// Initial OHLC data for cumulative P&L
 const initialProfitLossHistory: ProfitLossDataPoint[] = [
-  { name: 'Jan', profit: 400 }, { name: 'Feb', profit: 300 }, { name: 'Mar', profit: 500 },
-  { name: 'Apr', profit: 200 }, { name: 'May', profit: 700 }, { name: 'Jun', profit: 600 },
+  { name: 'Jan', open: 0, close: 400, high: 450, low: -50 },
+  { name: 'Feb', open: 400, close: 700, high: 780, low: 350 },
+  { name: 'Mar', open: 700, close: 1200, high: 1250, low: 650 },
+  { name: 'Apr', open: 1200, close: 1000, high: 1250, low: 950 }, // Example of a down month
+  { name: 'May', open: 1000, close: 1500, high: 1550, low: 980 },
+  { name: 'Jun', open: 1500, close: 1250.75, high: 1600, low: 1200 },
 ];
+
 
 export default function AlgoTradePage() {
   const [marketData, setMarketData] = useState<StockData[]>(initialMarketData);
@@ -53,7 +59,6 @@ export default function AlgoTradePage() {
   
   useEffect(() => {
     addSystemAlert('System Initialized', 'AlgoTrade Insights is online and operational.', 'default');
-    // Simulate C++ backend connection issue for demonstration
     setTimeout(() => {
       addSystemAlert('Backend Warning', 'Simulated intermittent connection to C++ backend.', 'destructive');
     }, 5000);
@@ -64,38 +69,55 @@ export default function AlgoTradePage() {
     const marketInterval = setInterval(() => {
       setMarketData(prevData =>
         prevData.map(stock => {
-          const priceChange = (Math.random() - 0.5) * (stock.price * 0.01); // up to 1% change
+          const priceChange = (Math.random() - 0.5) * (stock.price * 0.01); 
           const newPrice = Math.max(0.01, stock.price + priceChange);
           const change = newPrice - stock.price;
           const changePercent = (change / stock.price) * 100;
           return { ...stock, price: newPrice, change, changePercent, lastUpdated: Date.now() };
         })
       );
-    }, 3000); // Update market data every 3 seconds
+    }, 3000); 
 
     const performanceInterval = setInterval(() => {
       setPerformanceMetrics(prevMetrics => {
-        const pnlChange = (Math.random() - 0.45) * 100; // Bias towards profit for demo
+        const pnlChange = (Math.random() - 0.45) * 200; // Increased PNL change range
         const newPnl = prevMetrics.netProfitLoss + pnlChange;
         const newTotalTrades = prevMetrics.totalTrades + 1;
-        const newWinRate = prevMetrics.winRate + (Math.random()-0.48)*0.1; // Slight fluctuation
+        const newWinRate = prevMetrics.winRate + (Math.random()-0.48)*0.1; 
 
         setProfitLossHistory(prevHistory => {
-            const lastMonthIndex = prevHistory.length % 12; // Cycle through months for demo
+            const lastMonthIndex = prevHistory.length % 12; 
             const monthNames = ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun"];
-            const newPoint = { name: monthNames[lastMonthIndex], profit: newPnl > 0 ? newPnl : 0 }; // Only positive profit for bar chart simplicity
-            return [...prevHistory.slice(-5), newPoint]; // Keep last 6 points
+            
+            const openVal = prevMetrics.netProfitLoss;
+            const closeVal = newPnl;
+            
+            const changeForWick = closeVal - openVal;
+            const highFluctuation = Math.abs(changeForWick) * (Math.random() * 0.3 + 0.05); // 5-35%
+            const lowFluctuation = Math.abs(changeForWick) * (Math.random() * 0.3 + 0.05);  // 5-35%
+
+            const newHigh = Math.max(openVal, closeVal) + highFluctuation;
+            const newLow = Math.min(openVal, closeVal) - lowFluctuation;
+
+            const newCandle: ProfitLossDataPoint = {
+              name: monthNames[lastMonthIndex],
+              open: openVal,
+              close: closeVal,
+              high: newHigh,
+              low: newLow,
+            };
+            return [...prevHistory.slice(-5), newCandle]; 
         });
 
         return {
           ...prevMetrics,
           netProfitLoss: newPnl,
           totalTrades: newTotalTrades,
-          winRate: Math.min(100, Math.max(0, newWinRate)), // Clamp between 0-100
-          avgTradeDuration: `${Math.floor(Math.random()*59 +1)}s` // Random duration
+          winRate: Math.min(100, Math.max(0, newWinRate)), 
+          avgTradeDuration: `${Math.floor(Math.random()*59 +1)}s` 
         };
       });
-    }, 5000); // Update performance every 5 seconds
+    }, 5000); 
 
     return () => {
       clearInterval(marketInterval);
@@ -107,10 +129,10 @@ export default function AlgoTradePage() {
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <AppHeader />
       <main className="flex-grow container mx-auto p-4 md:p-6 lg:p-8">
-        <Tabs defaultValue="market-data" className="w-full">
+        <Tabs defaultValue="dashboard" className="w-full"> {/* Default to dashboard to see new chart */}
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-5 mb-6 bg-card border border-border shadow-sm">
             <TabsTrigger value="market-data" className="flex items-center space-x-2 py-3">
-              <CandlestickChart className="h-5 w-5" />
+              <CandlestickIcon className="h-5 w-5" />
               <span>Market Data</span>
             </TabsTrigger>
             <TabsTrigger value="dashboard" className="flex items-center space-x-2 py-3">

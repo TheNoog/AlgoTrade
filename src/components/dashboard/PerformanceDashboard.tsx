@@ -3,9 +3,8 @@
 import type { PerformanceMetrics, ProfitLossDataPoint } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { DollarSign, Percent, Activity, BarChartHorizontalBig, Clock } from 'lucide-react';
-import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
+import { ChartContainer, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
 import { BarChart, CartesianGrid, XAxis, YAxis, Bar, ResponsiveContainer, Tooltip as RechartsTooltip, Legend as RechartsLegend } from 'recharts';
-
 
 interface MetricDisplayProps {
   icon: React.ReactNode;
@@ -32,10 +31,71 @@ interface PerformanceDashboardProps {
   history: ProfitLossDataPoint[];
 }
 
+// Custom shape for candlestick
+const CandleShape = (props: any) => {
+  const { x, y, width, height, payload } = props;
+  // x: x-coordinate of the bar's left edge
+  // y: y-coordinate of the bar's top edge (corresponds to scaled `high` value from dataKey=['low','high'])
+  // width: width of the bar
+  // height: height of the bar (corresponds to scaled `high - low` distance)
+  
+  const { open, close, high, low } = payload;
+
+  const isPositive = close >= open;
+  const candleFill = isPositive ? 'hsl(var(--chart-positive))' : 'hsl(var(--chart-negative))';
+  
+  // Function to scale data value to pixel y-coordinate relative to the bar's y and height
+  // The bar's y is for `high` (top of the bounding box), bar's y + height is for `low` (bottom of the bounding box).
+  const valToPixel = (val: number) => {
+    const range = payload.high - payload.low;
+    if (range === 0) { 
+      return y + height / 2; // Middle of the bar if high === low
+    }
+    // Proportion of the way down from `payload.high`
+    const proportion = (payload.high - val) / range;
+    return y + proportion * height;
+  };
+
+  const yOpen = valToPixel(open);
+  const yClose = valToPixel(close);
+
+  const bodyTopY = Math.min(yOpen, yClose);
+  const bodyHeight = Math.max(1, Math.abs(yOpen - yClose)); // Ensure body has min height 1px
+
+  const wickX = x + width / 2; // Centered wick
+
+  return (
+    <g>
+      {/* Wick: from high (props.y) to low (props.y + props.height) */}
+      <line x1={wickX} y1={y} x2={wickX} y2={y + height} stroke={candleFill} strokeWidth={1.5} />
+      {/* Body */}
+      <rect x={x} y={bodyTopY} width={width} height={bodyHeight} fill={candleFill} />
+    </g>
+  );
+};
+
+const CustomTooltipContent = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload as ProfitLossDataPoint; // Full OHLC data
+    return (
+      <div className="p-2 bg-popover border border-border rounded-md shadow-lg text-popover-foreground text-xs">
+        <p className="label font-semibold mb-1">{`${data.name}`}</p>
+        <p>{`Open: $${data.open.toFixed(2)}`}</p>
+        <p>{`High: $${data.high.toFixed(2)}`}</p>
+        <p>{`Low: $${data.low.toFixed(2)}`}</p>
+        <p>{`Close: $${data.close.toFixed(2)}`}</p>
+      </div>
+    );
+  }
+  return null;
+};
+
+
+// Chart config can be simplified or removed if not used for dynamic coloring via CSS vars here
 const chartConfig = {
-  profit: {
-    label: "Profit/Loss",
-    color: "hsl(var(--chart-1))",
+  profit: { // Not directly used for candle colors, but good for legend if we had one
+    label: "P/L",
+    color: "hsl(var(--chart-1))", // Generic color, actual candle color is conditional
   },
 };
 
@@ -71,8 +131,8 @@ export default function PerformanceDashboard({ metrics, history }: PerformanceDa
 
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle>Profit/Loss Over Time</CardTitle>
-          <CardDescription>Visual representation of trading performance.</CardDescription>
+          <CardTitle>Profit/Loss Over Time (Candlestick)</CardTitle>
+          <CardDescription>Visual representation of trading performance using candlesticks.</CardDescription>
         </CardHeader>
         <CardContent className="h-[350px] p-2">
           <ChartContainer config={chartConfig} className="w-full h-full">
@@ -91,20 +151,22 @@ export default function PerformanceDashboard({ metrics, history }: PerformanceDa
                   tickLine={false}
                   axisLine={false}
                   fontSize={12}
-                  tickFormatter={(value) => `$${value}`}
+                  tickFormatter={(value) => `$${value.toFixed(0)}`} // Format Y-axis ticks
+                  domain={['auto', 'auto']} // Let Recharts determine domain based on OHLC values
+                  allowDataOverflow={true}
                 />
-                <RechartsTooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--popover))',
-                    borderColor: 'hsl(var(--border))',
-                    borderRadius: 'var(--radius)',
-                  }}
-                  labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
-                  itemStyle={{ color: chartConfig.profit.color }}
-                  formatter={(value: number) => [`$${value.toFixed(2)}`, "Profit/Loss"]}
+                <RechartsTooltip content={<CustomTooltipContent />} cursor={{fill: 'hsl(var(--muted)/0.3)'}} />
+                {/* 
+                  The legend is tricky for candlesticks as there isn't one simple "dataKey" for color.
+                  We can omit it or create a custom legend if needed. 
+                  For now, omitting RechartsLegend.
+                */}
+                {/* <RechartsLegend content={<ChartLegendContent />} /> */}
+                <Bar 
+                  dataKey={['low', 'high']} // This tells Recharts the bar spans from low to high value
+                  shape={<CandleShape />} 
+                  minPointSize={2} // Ensures even small changes are visible
                 />
-                <RechartsLegend content={<ChartLegendContent />} />
-                <Bar dataKey="profit" fill={chartConfig.profit.color} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartContainer>

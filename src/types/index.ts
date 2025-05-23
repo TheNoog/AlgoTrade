@@ -17,7 +17,10 @@ export interface PerformanceMetrics {
 
 export interface ProfitLossDataPoint {
   name: string; // Timestamp or trade number
-  profit: number; // Profit/Loss
+  open: number;
+  close: number;
+  high: number;
+  low: number;
 }
 
 export interface SystemAlert {

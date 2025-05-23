@@ -43,6 +43,9 @@ body {
     --chart-3: 197 37% 54%; /* A teal like color */
     --chart-4: 43 74% 66%; /* A yellow like color */
     --chart-5: 27 87% 67%; /* An orange like color */
+    --chart-positive: 80 60% 45%; /* Green for positive candles/bars */
+    --chart-negative: 0 70% 50%;  /* Red for negative candles/bars */
+
 
     /* Sidebar specific colors - ensure they align with dark theme */
     --sidebar-background: 233 60% 25%;
@@ -90,6 +93,8 @@ body {
     --chart-3: 197 37% 54%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+    --chart-positive: 80 60% 45%;
+    --chart-negative: 0 70% 50%;
     
     --sidebar-background: 233 60% 25%;
     --sidebar-foreground: 0 0% 85%;
