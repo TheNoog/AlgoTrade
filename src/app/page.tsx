@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -27,15 +28,8 @@ const initialPerformanceMetrics: PerformanceMetrics = {
   totalTrades: 152,
 };
 
-// Initial OHLC data for cumulative P&L
-const initialProfitLossHistory: ProfitLossDataPoint[] = [
-  { name: 'Jan', open: 0, close: 400, high: 450, low: -50 },
-  { name: 'Feb', open: 400, close: 700, high: 780, low: 350 },
-  { name: 'Mar', open: 700, close: 1200, high: 1250, low: 650 },
-  { name: 'Apr', open: 1200, close: 1000, high: 1250, low: 950 }, // Example of a down month
-  { name: 'May', open: 1000, close: 1500, high: 1550, low: 980 },
-  { name: 'Jun', open: 1500, close: 1250.75, high: 1600, low: 1200 },
-];
+// Initial P/L history (empty, will populate in real-time)
+const initialProfitLossHistory: ProfitLossDataPoint[] = [];
 
 
 export default function AlgoTradePage() {
@@ -59,10 +53,12 @@ export default function AlgoTradePage() {
   
   useEffect(() => {
     addSystemAlert('System Initialized', 'AlgoTrade Insights is online and operational.', 'default');
+    // Add an initial point to the P/L history to start the graph
+    setProfitLossHistory([{ timestamp: Date.now(), value: initialPerformanceMetrics.netProfitLoss }]);
     setTimeout(() => {
       addSystemAlert('Backend Warning', 'Simulated intermittent connection to C++ backend.', 'destructive');
     }, 5000);
-  }, [addSystemAlert]);
+  }, [addSystemAlert, initialPerformanceMetrics.netProfitLoss]);
 
 
   useEffect(() => {
@@ -86,27 +82,18 @@ export default function AlgoTradePage() {
         const newWinRate = prevMetrics.winRate + (Math.random()-0.48)*0.1; 
 
         setProfitLossHistory(prevHistory => {
-            const lastMonthIndex = prevHistory.length % 12; 
-            const monthNames = ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun"];
-            
-            const openVal = prevMetrics.netProfitLoss;
-            const closeVal = newPnl;
-            
-            const changeForWick = closeVal - openVal;
-            const highFluctuation = Math.abs(changeForWick) * (Math.random() * 0.3 + 0.05); // 5-35%
-            const lowFluctuation = Math.abs(changeForWick) * (Math.random() * 0.3 + 0.05);  // 5-35%
+            const currentTime = Date.now();
+            const oneHourAgo = currentTime - 3600 * 1000; // 1 hour in milliseconds
 
-            const newHigh = Math.max(openVal, closeVal) + highFluctuation;
-            const newLow = Math.min(openVal, closeVal) - lowFluctuation;
-
-            const newCandle: ProfitLossDataPoint = {
-              name: monthNames[lastMonthIndex],
-              open: openVal,
-              close: closeVal,
-              high: newHigh,
-              low: newLow,
+            const newPoint: ProfitLossDataPoint = {
+              timestamp: currentTime,
+              value: newPnl,
             };
-            return [...prevHistory.slice(-5), newCandle]; 
+            
+            const updatedHistory = [...prevHistory, newPoint].filter(
+              point => point.timestamp >= oneHourAgo
+            );
+            return updatedHistory;
         });
 
         return {

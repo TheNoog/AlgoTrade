@@ -1,3 +1,4 @@
+
 export interface StockData {
   id: string;
   ticker: string;
@@ -16,11 +17,8 @@ export interface PerformanceMetrics {
 }
 
 export interface ProfitLossDataPoint {
-  name: string; // Timestamp or trade number
-  open: number;
-  close: number;
-  high: number;
-  low: number;
+  timestamp: number; // Unix timestamp (ms)
+  value: number;     // Cumulative P/L
 }
 
 export interface SystemAlert {
