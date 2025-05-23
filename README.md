@@ -2,6 +2,13 @@
 
 AlgoTrade Insights is a sophisticated Next.js web application designed to serve as a front-end interface for a high-frequency trading system. It provides real-time market data visualization, performance monitoring, AI-driven trading parameter optimization, risk management controls, and system alerts.
 
+![AlgoTrade1](AlgoTrade1.png)
+![AlgoTrade2](AlgoTrade2.png)
+![AlgoTrade3](AlgoTrade3.png)
+![AlgoTrade4](AlgoTrade4.png)
+
+<br />
+
 ## Overview
 
 The application is built with a modern technology stack, focusing on performance, developer experience, and AI integration. It aims to provide traders and system operators with a clear and actionable view of trading activities and system health.
